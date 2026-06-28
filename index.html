@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2Minds - METASPRITES Editor</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+</head>
+<body>
+<div id="app">
+
+  <div id="toolbar">
+    <button class="act" onclick="$fi.click()">&#128194; Importer PNG</button>
+    <input type="file" id="fi" accept=".png" style="display:none">
+    <button onclick="newProject()">&#128203; Nouveau</button>
+    <span class="sep">|</span>
+    <label title="Transparence de la couleur d'index 0 (baisser pour voir les contours sur fond uni)">Transparence (0) <input type="range" id="optC0" min="0" max="100" value="100" style="width:70px;vertical-align:middle" oninput="setC0Alpha(this.value)"><span id="c0val" style="color:var(--text2);font-size:10px">100%</span></label>
+    <span class="sep">|</span>
+    <label>Zoom <select id="optZ">
+      <option value="2">&times;2</option><option value="4" selected>&times;4</option>
+      <option value="6">&times;6</option><option value="8">&times;8</option>
+    </select></label>
+    <span id="badge" class="badge idle">&mdash;</span>
+    <span style="flex:1"></span>
+    <div id="langSelect" class="lang-select"></div>
+    <button onclick="fileSave()">&#128190; Sauver</button>
+    <button onclick="$fl.click()">&#128194; Charger</button>
+    <input type="file" id="fl" accept=".json" style="display:none">
+  </div>
+
+  <!-- LEFT SIDEBAR -->
+  <div id="sidebar">
+    <div class="sec" style="display:flex;align-items:center;gap:6px">
+      <button id="btnConfig" onclick="openConfig()" title="Configuration de la planche"
+              style="padding:2px 8px;font-size:14px;line-height:1">&#9881;</button>
+      <span>Nom de la planche</span>
+    </div>
+    <input type="text" id="sheetName" placeholder="ex: mini_iridium" style="width:100%;margin-bottom:4px"
+           oninput="onSheetNameInput(this.value)">
+
+    <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;margin-bottom:6px">
+      <label style="display:flex;justify-content:space-between;align-items:center">Tiles
+        <select id="optMode" style="width:60%"><option value="8">8&times;8</option><option value="16" selected>8&times;16</option></select>
+      </label>
+      <label style="display:flex;justify-content:space-between;align-items:center">Mode
+        <select id="optAlloc" style="width:60%"><option value="preload" selected>Preload (VRAM)</option><option value="dynamic">Dynamique</option></select>
+      </label>
+      <label style="display:flex;justify-content:space-between;align-items:center" title="Autoriser le chevauchement des blocs lors de la découpe auto">Overlap
+        <select id="optOverlap" style="width:60%" onchange="setCutOverlap(this.value)">
+          <option value="none">Non</option>
+          <option value="yes">Oui</option>
+        </select>
+      </label>
+      <label style="display:flex;justify-content:space-between;align-items:center" title="Index du 1er tile (0-447)">Start tile
+        <input type="number" id="optStartTile" min="0" max="447" value="0" style="width:60%">
+      </label>
+      <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="optSimple" onchange="toggleSimpleMode(this.checked)"> Mode simple</label>
+    </div>
+
+    <div id="simpleCutBox" style="display:none;margin-bottom:6px;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel2)">
+      <div class="sec" style="margin-top:0">Découpe simple</div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;margin-bottom:3px">
+        <span style="width:55px;color:var(--text2)">Horizontal</span>
+        <input type="range" id="optSimpleCutW" min="8" max="64" step="8" value="16" style="flex:1" oninput="setSimpleCutW(this.value)">
+        <span id="simpleCutWVal" style="width:34px;text-align:right">16px</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;margin-bottom:3px">
+        <span style="width:55px;color:var(--text2)">Vertical</span>
+        <input type="range" id="optSimpleCutH" min="16" max="64" step="16" value="16" style="flex:1" oninput="setSimpleCutH(this.value)">
+        <span id="simpleCutHVal" style="width:34px;text-align:right">16px</span>
+      </label>
+      <div id="simpleCutInfo" style="font-size:10px;color:var(--text2);line-height:1.35;margin:3px 0 5px"></div>
+      <button id="btnSimpleCutAll" style="width:100%" onclick="simpleCutWholeSheet()" title="Découpe la planche depuis le haut/gauche selon les dimensions choisies">&#9986; Découper la planche</button>
+    </div>
+
+    <!-- CONFIG MODAL -->
+    <div id="configOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000"
+         onclick="if(event.target===this)closeConfig()">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;max-width:92vw;
+                  max-height:88vh;overflow:auto;background:var(--panel,#1b1b22);border:1px solid var(--border,#333);
+                  border-radius:8px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,0.6)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:14px">Configuration de la planche</strong>
+          <button onclick="closeConfig()" style="padding:2px 8px">&times;</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            Mode mémoire
+            <select id="cfgAlloc" style="width:55%">
+              <option value="preload">Preload (préchargé)</option>
+              <option value="dynamic">Dynamique (streaming)</option>
+            </select>
+          </label>
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            Taille des sprites
+            <select id="cfgTileH" style="width:55%">
+              <option value="8">8×8</option>
+              <option value="16">8×16</option>
+            </select>
+          </label>
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            Mode d'édition
+            <select id="cfgSimple" style="width:55%">
+              <option value="0">Complexe (collision, attributs)</option>
+              <option value="1">Simple (adresses tuiles seules)</option>
+            </select>
+          </label>
+          <label style="display:flex;justify-content:space-between;align-items:center" title="Autoriser le chevauchement des blocs lors de la découpe auto">
+            Découpe avec overlap
+            <select id="cfgOverlap" style="width:55%">
+              <option value="none">Non (déplacer les blocs)</option>
+              <option value="yes">Oui (tout peut chevaucher)</option>
+            </select>
+          </label>
+
+          <hr style="border-color:var(--border,#333);width:100%">
+
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <strong>Attributs dans l'export .inc</strong>
+            <input type="checkbox" id="cfgAttrEnable" onchange="renderAttrEditor()">
+          </label>
+          <div id="attrEditor" style="display:none;flex-direction:column;gap:4px"></div>
+
+          <hr style="border-color:var(--border,#333);width:100%">
+
+          <div style="display:flex;gap:8px">
+            <button onclick="importConfigFromFile()" style="flex:1" title="Importer la configuration depuis un autre projet .json">⇪ Importer config (.json)</button>
+            <input type="file" id="cfgImportFile" accept=".json,application/json" style="display:none">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button onclick="applyConfig()" style="flex:1;background:var(--accent,#3a7);color:#fff">Appliquer</button>
+            <button onclick="closeConfig()" style="flex:1">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="cutGapBox" style="display:flex;align-items:center;gap:4px;font-size:11px;margin-bottom:3px"
+         title="Écart de pixels vides séparant deux sprites (1 = très collé, 32 = très espacé)">
+      <span style="color:var(--text2)">Séparation</span>
+      <input type="range" id="optCutGap" min="1" max="32" value="2" style="flex:1" oninput="setCutGap(this.value)">
+      <span id="cutGapVal" style="width:34px;text-align:right">2px</span>
+    </div>
+    <button id="btnAutoCutAll" style="width:100%;margin-bottom:6px" onclick="autoCutWholeSheetNew()"
+            title="Détecte les sprites de la planche et crée une frame par sprite">&#9986; Découper toute la planche</button>
+
+    <div class="sec">Animations</div>
+    <div id="animList"></div>
+    <button style="width:100%" onclick="addAnim()">+ Ajouter animation</button>
+
+    <div id="frmPanel" style="display:none;margin-top:6px">
+      <div class="sec">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="flex:1">Frames — <span id="frmZN" style="color:var(--accent)"></span></span>
+        </div>
+      </div>
+      <div id="mirrorBox" style="margin-bottom:4px;font-size:10px">
+        <span style="color:var(--text2)">Autogen mirroirs :</span>
+        <label><input type="radio" name="mirror" value="none" checked> Non</label>
+        <label><input type="radio" name="mirror" value="h"> H</label>
+        <label><input type="radio" name="mirror" value="v"> V</label>
+        <label><input type="radio" name="mirror" value="hv"> HV</label>
+      </div>
+      <div id="attrBox" style="display:none;margin-bottom:4px;font-size:10px;border:1px solid var(--border,#333);border-radius:4px;padding:4px">
+        <div style="color:var(--text2);margin-bottom:2px">Attributs frame — <span id="attrByteVal" style="color:var(--accent);font-family:monospace"></span></div>
+        <div id="attrChecks" style="display:flex;flex-direction:column;gap:1px"></div>
+      </div>
+      <div id="frmList"></div>
+      <div style="display:flex;gap:3px;margin-top:3px">
+        <button style="flex:1" onclick="addFrame()">+ Frame</button>
+        <button id="btnCloneCurrent" style="flex:1" onclick="cloneCurrentFrame()">+ Cloner</button>
+        <button id="btnImportFrame" style="flex:1" onclick="showClonePicker()">+ Importer</button>
+      </div>
+      <button id="btnMoveFrameZone" style="width:100%;margin-top:3px" onclick="showMoveFramePicker()"
+              title="Déplacer cette frame vers une autre animation">&#8644; Déplacer vers une anim…</button>
+      <div id="moveFramePicker" style="display:none;margin-top:4px;padding:4px;background:var(--panel2);border:1px solid var(--border);border-radius:3px">
+        <select id="moveFrameSelect" style="width:100%;font-size:10px"></select>
+        <div style="display:flex;gap:3px;margin-top:3px">
+          <button style="flex:1" onclick="doMoveFrameZone()">Déplacer</button>
+          <button onclick="hideMoveFramePicker()">Annuler</button>
+        </div>
+      </div>
+      <button id="btnAutoCut" style="width:100%;margin-top:3px" onclick="armAutoCut()"
+              title="Découpe automatique sur une zone (selon mode dynamique/preload)">&#9986; Découpe auto (zone)</button>
+      <button id="btnClearBlocks" style="width:100%;margin-top:3px" onclick="clearFrameBlocks()"
+              title="Supprimer tous les blocs de la frame courante">&#128465; Vider les blocs</button>
+      <button id="btnUndo" style="width:100%;margin-top:3px;display:none" onclick="undo()"
+              title="Annuler la dernière suppression (Ctrl+Z)">&#8634; Annuler suppression</button>
+      <div id="selActions" style="display:none;margin-top:3px">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:2px"><span id="selCount">0</span> bloc(s) sélectionné(s)</div>
+        <button style="width:100%" onclick="moveSelectionToNewFrame()" title="Déplacer la sélection vers une nouvelle frame">&#8599; Vers nouvelle frame</button>
+        <button style="width:100%;margin-top:3px" onclick="deleteSelection()" title="Supprimer les blocs sélectionnés">&#128465; Supprimer la sélection</button>
+      </div>
+      <div id="bboxControls" style="display:none;margin-top:4px">
+        <button id="btnBbox" style="width:100%" onclick="toggleBboxEdit()">&#9744; Éditer boîte collision</button>
+        <button id="btnBboxReset" style="width:100%;margin-top:3px;font-size:10px" onclick="resetBbox()">↺ Réinit. boîte (= blocs)</button>
+        <div id="bboxInfo" style="font-size:10px;color:var(--text2);margin-top:3px"></div>
+      </div>
+      <div id="clonePicker" style="display:none;margin-top:4px;padding:4px;background:var(--panel2);border:1px solid var(--border);border-radius:3px">
+        <select id="cloneSelect" style="width:100%;font-size:10px"></select>
+        <div style="display:flex;gap:3px;margin-top:3px">
+          <button style="flex:1" onclick="doCloneFrame()">Valider</button>
+          <button onclick="hideClonePicker()">Annuler</button>
+        </div>
+      </div>
+    </div>
+    <div class="left-bottom-actions">
+      <button id="btnClearAll" class="danger-wide" onclick="clearAnimationsAndFrames()" title="Supprimer toutes les animations et frames">&#128465; Tout supprimer</button>
+    </div>
+  </div>
+
+  <div class="splitter" id="splitL"></div>
+
+  <!-- CENTER -->
+  <div id="main">
+    <div class="cwrap" id="wrap"><canvas id="cv"></canvas></div>
+    <div id="hud"><span id="hudL"></span><span id="hudR"></span></div>
+    <div class="empty" id="empty">
+      <div>Importer une planche PNG pour commencer</div>
+      <button class="act" onclick="$fi.click()">Importer PNG</button>
+    </div>
+  </div>
+
+  <div class="splitter" id="splitR"></div>
+
+  <!-- RIGHT PANEL -->
+  <div id="rpanel">
+    <div id="prevBox" style="display:none">
+      <div class="sec">Preview</div>
+      <canvas id="prevCanvas" width="128" height="128"></canvas>
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;margin:0 0 4px" title="Opacité de la couleur 0 dans la preview"><span style="color:var(--text2)">Couleur 0</span><input type="range" id="optPrevC0" min="0" max="100" value="100" style="flex:1" oninput="setPreviewC0Alpha(this.value)"><span id="prevC0val" style="color:var(--text2);width:32px;text-align:right">100%</span></label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;margin:0 0 4px"><input type="checkbox" id="optPrevBlockOutline" checked onchange="setPreviewBlockOutline(this.checked)"> Afficher contour de bloc</label>
+      <div id="prevControls">
+        <button onclick="prevStep(-1)" id="btnStepB" title="Image précédente">&#9664;&#9664;</button>
+        <button onclick="prevPlay()" id="btnPlay">&#9654; Play</button>
+        <button onclick="prevStop()">&#9724; Stop</button>
+        <button onclick="prevStep(1)" id="btnStepF" title="Image suivante">&#9654;&#9654;</button>
+      </div>
+      <div id="prevInfo"></div>
+    </div>
+
+    <div>
+      <div class="sec">Palette</div>
+      <div id="palTooltip"></div>
+      <div id="palGrid" class="pal"></div>
+      <div id="palInfo" style="font-size:10px;color:var(--text2)"></div>
+    </div>
+
+    <div>
+      <div class="sec">Tile Bank</div>
+      <label style="margin-bottom:3px"><input type="checkbox" id="optDedup" checked> Dédupliquer</label>
+      <div class="rpanel-stats" style="margin-bottom:4px">
+        <div>Totaux : <b id="stT">0</b> &middot; Uniques : <b id="stU">0</b></div>
+        <div>Anims : <b id="stZ">0</b> &middot; Frames : <b id="stF">0</b></div>
+        <div>Image : <b id="stI">&mdash;</b></div>
+        <div>Range : <b id="stRange">&mdash;</b></div>
+        <div>Poids (BIN) : <b id="stWeight">&mdash;</b></div>
+      </div>
+      <canvas id="tilePreview"></canvas>
+      <div id="lowTileBankBox" style="display:none;margin-top:6px">
+        <div class="sec" style="font-size:11px">Tiles peu occupés</div>
+        <label style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <span>Seuil</span>
+          <input type="range" id="lowOccSlider" min="1" max="50" value="10" oninput="setLowOccThreshold(this.value)">
+          <b id="lowOccVal">10%</b>
+        </label>
+        <canvas id="lowTilePreview"></canvas>
+        <div id="lowTileInfo" style="font-size:10px;color:var(--text2);margin-top:3px"></div>
+      </div>
+      <div style="display:flex;gap:3px;margin-top:4px">
+        <button style="flex:1" onclick="exportTileBankPng()" title="Planche PNG horizontale">&#11015; PNG</button>
+        <button style="flex:1" onclick="exportTileBankBinary()" title="Binaire planaire SMS">&#11015; BIN</button>
+        <button style="flex:1" onclick="exportTileBankPSG()" title="Compression PS Gaiden (.psgcompr)">&#11015; PSG</button>
+        <button style="flex:1" onclick="exportTileBankZX7()" title="Compression ZX7 (.zx7)">&#11015; ZX7</button>
+      </div>
+      <div id="exportSizes" style="font-size:10px;color:var(--text2);margin-top:4px;line-height:1.5"></div>
+    </div>
+
+    <div>
+      <div class="sec">Metasprites infos</div>
+      <button style="width:100%" onclick="exportASM()" title="Définitions metasprites WLA-DX (.inc)">&#11015; Exporter ASM (.inc)</button>
+      <button style="width:100%;margin-top:4px" onclick="exportDevkitSMS()" title="Export DevkitSMS en C/H">&#11015; Exporter pour DevkitSMS (.c/.h)</button>
+    </div>
+  </div>
+</div>
+<div id="busyOverlay" aria-hidden="true"><div><span class="busySpin"></span><strong>Découpe en cours…</strong></div></div>
+
+<script src="lang-fr.js"></script>
+<script src="lang-en.js"></script>
+<script src="lang.js"></script>
+<script src="js/state.js"></script>
+<script src="js/render.js"></script>
+<script src="js/compress.js"></script>
+<script src="js/zx7.js"></script>
+<script src="js/asm.js"></script>
+<script src="js/autocut.js"></script>
+<script src="js/preview.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/interact.js"></script>
+<script src="js/io.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
