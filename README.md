@@ -50,3 +50,22 @@ SMS Metasprite Editor can export tile graphics and metasprite data in several fo
 This editor is intended for Sega Master System homebrew projects that need a practical visual workflow for preparing metasprites, animation frames, tile data, and export-ready source files.
 
 It is especially useful when working with indexed PNG sprite sheets and when optimizing sprite animations under hardware constraints such as tile count, sprite width, and VRAM transfer limits.
+
+### Localization
+
+The interface supports external language files:
+
+* `lang.js`
+* `lang-fr.js`
+* `lang-en.js`
+
+Language selection is available through flag icons, and the default language is selected from the browser language when available.
+
+### Fully Browser-Based
+
+TILESMAP Editor is designed as a self-contained web tool:
+
+* No installation required.
+* No backend required.
+* No external processing.
+* Works directly from static HTML, CSS, and JavaScript files.
