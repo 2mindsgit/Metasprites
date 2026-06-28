@@ -4,6 +4,8 @@
 
 The tool runs entirely in the browser and does not require any server-side processing. It allows indexed PNG sprite sheets to be imported, sliced into frames, organized into animations, optimized into a tile bank, and exported for use in assembly or DevkitSMS projects.
 
+**Online version** https://metasprites.2minds.fr/
+
 <img width="1070" height="756" alt="metasprites2" src="https://github.com/user-attachments/assets/329d4160-8065-48db-9048-4c0695772687" />
 <img width="1640" height="791" alt="metasprites" src="https://github.com/user-attachments/assets/7c8fba7f-54c5-4a0d-8dac-dafa3bf74eed" />
 
